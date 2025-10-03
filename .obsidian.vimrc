@@ -4,7 +4,7 @@ nmap H ^
 nmap L $
 
 " 复制整行
-nmap Y y$
+nmap Y yy
 
 
 set clipboard=unnamed

@@ -1,4 +1,4 @@
-本篇文档,(不)完全使用ai编写(笑),用于记录我使用git的一些技巧
+本篇文档,(不)完全使用ai编写(笑),用于记录我使用git的一些过程
 
 # 常规远程同步流程
 - git init (用于初始化本地仓库)
@@ -6,6 +6,7 @@
 - git commit (提交修改,并编写注释commit)
 - 在github上新建仓库
 - git remote add orgin <仓库地址(https)> (给当前本地git仓库添加一个远程仓库,并取名为origin)
+	- **git remote -v 可以显示这一步我们添加的对应远程仓库**
 - git push -u origin main (将当前分支和origin/main分支绑定,并推送到远程仓库)
 
 # Git log的使用
