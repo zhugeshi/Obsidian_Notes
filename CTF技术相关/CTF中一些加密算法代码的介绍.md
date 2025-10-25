@@ -1450,6 +1450,7 @@ Base64 是一种 **把二进制数据安全塞进文本** 的编码方式，规�
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <stdint.h>
 
 // Base64字符表
 static const char base64_chars[] =
@@ -1481,7 +1482,7 @@ char *base64_encode(const unsigned char *data, size_t input_length, size_t *outp
 
         encoded_data[j++] = base64_chars[(triple >> 18) & 0x3F];
         encoded_data[j++] = base64_chars[(triple >> 12) & 0x3F];
-        encoded_data[j++] = (i > input_length + 1) ? '=' : base64_chars[(triple >> 6) & 0x3F];
+        encoded_data[j++] = (i - 1 > input_length + 1) ? '=' : base64_chars[(triple >> 6) & 0x3F];
         encoded_data[j++] = (i > input_length) ? '=' : base64_chars[triple & 0x3F];
     }
     encoded_data[*output_length] = '\0';

@@ -1,3 +1,12 @@
+---
+profileName: zhugeshi
+postId: "438"
+postType: post
+categories:
+  - 12
+---
+更新中...
+
 # Pluto Chat
 ## 程序分析
 首先看到main函数
@@ -306,14 +315,9 @@ ssize_t __fastcall sub_555555555751(int fd, char *s, char *s1)
 ## 解密流程
 ### 解法1
 所以这个程序大致的流程就是
-```mermaid
-flowchart LR
-	客户端输入 ---|加密|发送 ---|解密|服务端得到数据
-```
-``` mermaid
-flowchart RL
-	服务端返回 ---|加密|发送 ---|解密|客户端收到返回
-```
+
+> [!大致流程]
+> 客户端加密 <-> 发送 <-> 服务端解密 
 
 我们再仔细观察这个两个函数,我们很容易发现在解码消息的时候,我们的函数会取出编码在消息开头的key和len再进行解码,又由于RC4是对称加密,所以我们只需要将一样的数据发送给服务就可以得到解密之后的文本了.
 
@@ -542,4 +546,3 @@ if __name__ == '__main__':
 
 output: \x03\x11topsecretengineer7Of course! It's: sun{S3cur1ty_thr0ugh_Obscur1ty_1s_B4D}
 ```
-
