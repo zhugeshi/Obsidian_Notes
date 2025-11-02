@@ -651,26 +651,70 @@ int main() {
 
 # AES算法
 **一种对称分组加密算法**
-
 ## 参数分析
-1. 密钥长度 (NK)
-- 决定了加密强度，也直接影响轮数
-- Nk 表示密钥包含的 **32位字数（word）**（一个 word = 4 字节）
-```cpp
-Nk = 4  →  AES-128 （4*32 = 128 位密钥）
-Nk = 6  →  AES-192 （6*32 = 192 位密钥）
-Nk = 8  →  AES-256 （8*32 = 256 位密钥）
-```
-2. 密钥轮数 (Nr)
-```cpp
-AES-128 → Nr = 10 轮
-AES-192 → Nr = 12 轮
-AES-256 → Nr = 14 轮
-```
-3. 轮密钥数量 (Nb)
-- Nb 固定为 **4**（表示 4 列，即 4×4=16 字节）
-- 表示状态矩阵有 **4 列**
-- 每轮需要 Nb × 4 字节的子密钥（16 字节）
+密钥长度决定了加密的回合数（rounds）。对于不同长度的密钥，回合数如下：
+- 128 比特密钥：10 回合
+- 192 比特密钥：12 回合
+- 256 比特密钥：14 回合
+
+参考连接: 
+[高级加密标准 - 维基百科，自由的百科全书](https://zh.wikipedia.org/wiki/%E9%AB%98%E7%BA%A7%E5%8A%A0%E5%AF%86%E6%A0%87%E5%87%86)
+[【AES加密算法】| AES加密过程详解| 对称加密| Rijndael-128| 密码学| 信息安全_哔哩哔哩_bilibili](https://www.bilibili.com/video/BV1i341187fK/?spm_id_from=333.337.search-card.all.click&vd_source=3fbe06963450d79eb92b1fe509cd4c79)
+## 主加密流程分析
+![image.png](https://cloud-map-bed-1351541725.cos.ap-nanjing.myqcloud.com/pic/20251101173710.png)
+
+(注意图片中的aes-128的示范)
+总体流程可以总结为:
+明文->初始变换->指定轮数循环运算->1轮最终轮->密文
+
+循环运算又可以分为
+1. 字节代换
+2. 行移位
+3. 列混合
+4. 轮密钥加
+### 初始变换
+![image.png](https://cloud-map-bed-1351541725.cos.ap-nanjing.myqcloud.com/pic/20251101172548.png)
+
+![image.png](https://cloud-map-bed-1351541725.cos.ap-nanjing.myqcloud.com/pic/20251101172823.png)
+
+- 首先会读入十六个字节的数据组成4x4的矩阵
+- 再和子密钥矩阵进行异或计算可以得到初始变换后的16个字节
+### 字节代换
+![image.png](https://cloud-map-bed-1351541725.cos.ap-nanjing.myqcloud.com/pic/20251101173030.png)
+
+在这个步骤中,会将上一步的16个字节通过查`sbox表得到混淆后的16个字节`
+### 行移位
+![image.png](https://cloud-map-bed-1351541725.cos.ap-nanjing.myqcloud.com/pic/20251101173330.png)
+
+对得到的4x4的矩阵,每一行进行循环位移
+0行: 不移动
+1行: 向左循环位移1位
+2行: 向左循环位移2位
+3行: 向左循环位移3位
+### 列混合
+对上一步的结果左乘一个`固定的矩阵`
+### 轮密钥加
+对上一步得到的结果和一个`子密钥矩阵`异或
+## 密钥拓展的流程
+在aes-128中,密钥拓展会得到10个子密钥矩阵用于主要加密流程中的加密
+
+- 如果i不是4的倍数
+
+![image.png](https://cloud-map-bed-1351541725.cos.ap-nanjing.myqcloud.com/pic/20251101174326.png)
+
+- 如果i是4的倍数,$W[i] = W[i-4] \oplus T(W[i-1])$
+### T函数流程
+1. 字循环
+
+![image.png](https://cloud-map-bed-1351541725.cos.ap-nanjing.myqcloud.com/pic/20251101174856.png)
+
+2. 字节代换
+
+![image.png](https://cloud-map-bed-1351541725.cos.ap-nanjing.myqcloud.com/pic/20251101174948.png)
+
+3. 轮常量异或,将上一轮得到的结果和Rcon[j]异或,j是轮数
+
+![image.png](https://cloud-map-bed-1351541725.cos.ap-nanjing.myqcloud.com/pic/20251101175704.png)
 
 ## 比赛中的魔改
 	1. 修改SBOX
@@ -680,11 +724,16 @@ AES-256 → Nr = 14 轮
 ## 代码实现
 ```cpp
 /*
- * Minimal AES (Rijndael) encryption in C
- * - AES-128/192/256 key schedule
- * - ECB block encrypt
- * - CBC + PKCS#7 padding encrypt
- * No external dependencies.
+ * AES (Advanced Encryption Standard) 算法详解：
+ * - 分组密码算法，分组长度固定为128位(16字节)
+ * - 密钥长度支持128位(10轮)、192位(12轮)、256位(14轮)
+ * - 每轮包含4个变换：SubBytes、ShiftRows、MixColumns、AddRoundKey
+ * - 采用SPN (Substitution-Permutation Network) 结构
+ *
+ * 数学基础：
+ * - 在GF(2^8)有限域上运算
+ * - 使用不可约多项式 m(x) = x^8 + x^4 + x^3 + x + 1 (0x11B)
+ * - S-box基于有限域逆元和仿射变换构造
  *
  * Build: gcc -O2 -std=c99 aes.c -o aes
  */
@@ -695,8 +744,16 @@ AES-256 → Nr = 14 轮
 
 /*==================== 常量表：S-box & Rcon ====================*/
 
-/* AES S-Box（FIPS-197，表4） */
-/* ========用于密钥拓展======= */
+/*
+ * AES S-Box（FIPS-197，表4）
+ * 作用：非线性替换表，提供算法的混淆特性
+ * 构造原理：
+ *   - 对每个字节求GF(2^8)上的乘法逆元（0x00映射到自身）
+ *   - 应用仿射变换：y = A·x⁻¹ + b
+ *   - 其中A是8×8矩阵，b是常数向量
+ * 特性：严格雪崩效应、非线性度高等
+ * ========用于密钥拓展=======
+ */
 static const uint8_t sbox[256] = {
   0x63,0x7c,0x77,0x7b,0xf2,0x6b,0x6f,0xc5,0x30,0x01,0x67,0x2b,0xfe,0xd7,0xab,0x76,
   0xca,0x82,0xc9,0x7d,0xfa,0x59,0x47,0xf0,0xad,0xd4,0xa2,0xaf,0x9c,0xa4,0x72,0xc0,
@@ -716,8 +773,14 @@ static const uint8_t sbox[256] = {
   0x8c,0xa1,0x89,0x0d,0xbf,0xe6,0x42,0x68,0x41,0x99,0x2d,0x0f,0xb0,0x54,0xbb,0x16
 };
 
-/* 轮常量 Rcon（只需到 14 即可） */
-/* ========用于密钥拓展======== */
+/*
+ * 轮常量 Rcon（只需到 14 即可）
+ * 作用：在密钥扩展过程中提供非线性常数
+ * 构造：Rcon[i] = x^(i-1) mod m(x)，其中m(x)=0x11B
+ * 即：Rcon[1]=0x01, Rcon[2]=0x02, Rcon[3]=0x04, ...
+ * 注意：Rcon[0]未使用，索引从1开始
+ * ========用于密钥拓展========
+ */
 static const uint8_t Rcon[15] = {
   0x00, /* unused */
   0x01,0x02,0x04,0x08,0x10,0x20,0x40,0x80,0x1B,0x36,
@@ -726,13 +789,30 @@ static const uint8_t Rcon[15] = {
 
 /*==================== 工具宏与上下文 ====================*/
 
+/* AES 算法上下文结构体
+ * - round_keys: 存储轮密钥的数组
+ *   - 每轮需要16字节密钥
+ *   - 最多需要15轮，因此总长度为 15*16=240 字节
+ *   - 按轮顺序连续存储，每轮占用连续的16字节
+ * - Nr: 加密轮数，取决于密钥长度
+ *   - AES-128：10轮
+ *   - AES-192：12轮
+ *   - AES-256：14轮
+ */
 typedef struct {
-    /* round_keys：按“轮 × 16 字节”顺序存储，总长最多 15*16=240 */
-    uint8_t round_keys[240];
-    int Nr; /* 轮数：AES-128=10, AES-192=12, AES-256=14 */
+    uint8_t round_keys[240];  /* 轮密钥数组，每轮16字节，最多15轮 */
+    int Nr;                   /* 加密轮数：128位密钥=10轮, 192位=12轮, 256位=14轮 */
 } aes_ctx;
 
-/* GF(2^8) 上的 xtime：乘以 2 */
+/*
+ * GF(2^8) 上的 xtime：乘以 2
+ * 作用：在GF(2^8)有限域上计算 x * 2
+ * 原理：
+ *   - 左移1位相当于乘以2
+ *   - 如果最高位为1（x & 0x80），需要模约减：异或不可约多项式0x1B
+ *   - 否则直接返回左移结果
+ * 数学：x * 2 = (x << 1) ⊕ (x₇ ? 0x1B : 0x00)
+ */
 static inline uint8_t xtime(uint8_t x) {
     return (uint8_t)((x << 1) ^ ((x & 0x80) ? 0x1B : 0x00));
 }
@@ -744,7 +824,17 @@ static inline void SubBytes(uint8_t st[16]) {
     for (int i = 0; i < 16; ++i) st[i] = sbox[st[i]];
 }
 
-/* AES 的行移位（state 按列主序：索引 4*c + r） */
+/* AES 的行移位变换
+ * 功能：对状态矩阵的每一行进行循环左移
+ * 参数：
+ *   - st[16]: 状态矩阵，按列优先顺序存储（索引 = 4*列 + 行）
+ * 变换规则：
+ *   - 第0行（row 0）：不移动
+ *   - 第1行（row 1）：循环左移1位
+ *   - 第2行（row 2）：循环左移2位
+ *   - 第3行（row 3）：循环左移3位
+ * 注意：这是AES加密中的关键步骤之一，用于提供扩散性
+ */
 static inline void ShiftRows(uint8_t st[16]) {
     uint8_t t;
 
@@ -771,7 +861,20 @@ static inline void ShiftRows(uint8_t st[16]) {
     st[7]  = t;
 }
 
-/* 列混淆：对每一列做 GF(2^8) 线性变换 */
+/*
+ * 列混淆：对每一列做 GF(2^8) 线性变换
+ * 作用：在列上应用线性变换，提供算法的扩散特性
+ * 数学原理：每列乘以固定矩阵 M：
+ *   [02 03 01 01]   [a0]
+ *   [01 02 03 01] × [a1]
+ *   [01 01 02 03]   [a2]
+ *   [03 01 01 02]   [a3]
+ * 优化实现：使用xtime和异或运算高效计算
+ * 算法步骤：
+ *   1. 计算列中所有字节的异或：t = a0 ⊕ a1 ⊕ a2 ⊕ a3
+ *   2. 对每字节应用：b_i = a_i ⊕ t ⊕ xtime(a_i ⊕ a_{i+1})
+ *   3. 其中a4 = a0（循环）
+ */
 static inline void MixColumns(uint8_t st[16]) {
     for (int c = 0; c < 4; ++c) {
         uint8_t *col = &st[4*c];
@@ -807,7 +910,21 @@ static inline void SubWord(uint8_t w[4]) {
     w[3] = sbox[w[3]];
 }
 
-/* 生成 round_keys（按轮 × 16 字节顺序），支持 128/192/256 */
+/* AES 密钥扩展函数 
+ * 功能：根据原始密钥生成所有轮密钥
+ * 参数：
+ *   - ctx: AES 上下文结构体指针
+ *   - key: 原始密钥数组
+ *   - keybits: 密钥长度（支持128/192/256位）
+ * 返回值：
+ *   - 0: 成功
+ *   - -1: 不支持的密钥长度
+ * 说明：
+ *   - 生成的轮密钥存储在 ctx->round_keys 中
+ *   - 每轮需要 16 字节密钥
+ *   - 密钥按轮顺序连续存储
+ *   - 支持 AES-128/192/256 三种规格
+ */
 static int aes_init(aes_ctx *ctx, const uint8_t *key, int keybits) {
     int Nk, Nr;
     if (keybits == 128) { Nk = 4; Nr = 10; }
@@ -858,42 +975,64 @@ static int aes_init(aes_ctx *ctx, const uint8_t *key, int keybits) {
 
 /*==================== 单块加密（ECB 基元） ====================*/
 
+/* AES 单块加密函数
+ * 功能：对16字节明文块进行AES加密
+ * 参数：
+ *   - ctx: AES上下文结构体指针，包含轮密钥, 轮数等基本信息
+ *   - in[16]: 输入明文块（16字节）
+ *   - out[16]: 输出密文块（16字节）
+ * 加密步骤：
+ *   1. 轮0：只进行AddRoundKey
+ *   2. 轮1~(Nr-1)：SubBytes、ShiftRows、MixColumns、AddRoundKey
+ *   3. 最后一轮：SubBytes、ShiftRows、AddRoundKey（无MixColumns）
+ * 注意：这是ECB模式的基本单元，实际使用建议采用更安全的CBC等模式
+ */
 static void aes_encrypt_block(const aes_ctx *ctx,
                               const uint8_t in[16],
                               uint8_t out[16]) {
     uint8_t st[16];
     memcpy(st, in, 16);
 
-    const uint8_t *rk = ctx->round_keys;
+    const uint8_t *round_key = ctx->round_keys;
 
     /* 轮 0：AddRoundKey */
-    AddRoundKey(st, rk);
-    rk += 16;
+    AddRoundKey(st, round_key);
+    round_key += 16;
 
     /* 轮 1..Nr-1 */
     for (int round = 1; round < ctx->Nr; ++round) {
         SubBytes(st);
         ShiftRows(st);
         MixColumns(st);
-        AddRoundKey(st, rk);
-        rk += 16;
+        AddRoundKey(st, round_key);
+        round_key += 16;
     }
 
     /* 最后一轮：无 MixColumns */
     SubBytes(st);
     ShiftRows(st);
-    AddRoundKey(st, rk);
+    AddRoundKey(st, round_key);
 
     memcpy(out, st, 16);
 }
 
 /*==================== CBC + PKCS#7 填充加密 ====================*/
-
-/*
- * in_len: 明文长度
- * iv_in : 16 字节初始向量
- * out   : 输出缓冲，需至少 in_len + (16 - in_len%16) 字节
- * out_len: 返回实际输出长度
+/* AES-CBC 模式加密函数（带PKCS#7填充）
+ * 功能：使用CBC模式对任意长度明文进行AES加密，并进行PKCS#7填充
+ * 参数：
+ *   - ctx: AES上下文结构体指针
+ *   - in: 输入明文缓冲区
+ *   - in_len: 明文长度（字节数）
+ *   - iv_in: 初始化向量（16字节）
+ *   - out: 输出密文缓冲区
+ *   - out_len: 返回实际密文长度
+ * 返回值：
+ *   - 0: 成功
+ * 说明：
+ *   - CBC模式：每个明文块与前一个密文块异或后再加密
+ *   - PKCS#7填充：不足16字节的部分填充为缺少的字节数
+ *   - 输出缓冲区需预留足够空间：in_len + (16 - in_len%16)字节
+ *   - 输出长度一定是16的倍数
  */
 static int aes_cbc_encrypt_pkcs7(const aes_ctx *ctx,
                                  const uint8_t *in, size_t in_len,
@@ -949,6 +1088,7 @@ static int aes_cbc_encrypt_pkcs7(const aes_ctx *ctx,
 }
 
 /*==================== 可选：自测（FIPS-197 单块） ====================*/
+#define AES_TEST
 #ifdef AES_TEST
 static void print_hex(const uint8_t *p, size_t n) {
     for (size_t i = 0; i < n; ++i) printf("%02x", p[i]);
