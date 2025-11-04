@@ -1,45 +1,23 @@
 # 碎碎念
 最近越发觉得对常用加密算法的研究比较粗糙,借着完善社团文档的机会,再继续修改一下我的文章.
-
 # 一些前置小知识
-## 一、为什么需要加密模式（Modes of Operation）
-
-像 RC6 这样的分组加密算法，是**固定长度加密**的：
+# 一、为什么需要加密模式
+像 RC6 这样的分组加密算法，是固定长度加密的：
 - RC6-32/20/16 每次只能加密 **128 bit（16 字节）** 数据块
-- 如果明文超过 16 字节，就必须把数据切成块，然后用一定的“模式（mode）”来处理多块数据
+-果明文超过 16 字节，就必须把数据切成块，然后用一定的“模式（mode）”来处理多块数据
 - 不同模式会影响安全性和加密结果的可预测
 常见的几种模式：ECB, CBC, CFB, OFB, CTR ...  
-我们现在主要看 **ECB** 和 **CBC**
-
----
-
-## 二、ECB（Electronic Codebook）模式
-**工作原理**
-- 把明文分成一个个 16 字节的**独立块**
-- 每个块**单独用 RC6 加密**（互不影响）
+我们现主在主要看 **ECB** 和 **CBC** 两种主要的加密方式
+## 二、ECB 模式
+- 把明文分成一个个 16 字节的独立块
+- 每个块**单独用对应的加密**（互不影响）
 - 解密时也是每块独立解密
-
-**优点**  
-✅ 实现简单  
-✅ 可以并行加密（每块独立不依赖前一块）
-
-**缺点（安全性问题）**  
-❌ 如果两个明文块相同，密文块也会相同（模式可见性攻击）  
-❌ 不能隐藏数据模式，容易泄漏明文结构（比如图像加密后还能看出形状）
-
-**形象例子**
-- 用 ECB 加密 BMP 图片，虽然颜色被改变，但形状和轮廓还清晰可见
-
----
-
-## 三、CBC（Cipher Block Chaining）模式
-
+## 三、CBC 模式
 **工作原理**
 1. 第一个明文块 `P1` 先与一个 **初始化向量 IV（随机）** 异或，再加密
 2. 每个后续块 `Pi` 在加密前先与**前一个密文块 Ci-1** 进行异或，然后再加密
 3. 解密时反过来：先解密，再异或前一块密文或 IV
 
-**公式**
 ```cpp
 加密:  C1 = E( P1 ⊕ IV )
 	   Ci = E( Pi ⊕ Ci-1 )
@@ -47,27 +25,11 @@
 解密:  P1 = D( C1 ) ⊕ IV
        Pi = D( Ci ) ⊕ Ci-1
 ```
-
-**优点**  
-✅ 相同明文块在不同位置加密结果不同，消除了 ECB 的模式问题  
-✅ 使用随机 IV，每次加密结果都不同，即使明文相同
-
-**缺点**  
-❌ 必须按顺序加密（不能并行加密）  
-✅ 但是解密可以并行（因为解密不依赖下一个块）
-
-**典型应用**  
-绝大多数对称加密文件和通信协议（SSL/TLS、SSH）会用 CBC 或其他更安全的模式（如 GCM）
-
----
-
-## 四、PKCS#7 自动补齐（padding）
-
+## 四、PKCS#7 自动补齐
 ### 为什么要补齐
 - 分组加密算法需要固定块大小，比如 RC6 一次只能加密 16 字节
 - 如果明文不是 16 字节的整数倍，就需要补齐到整块大小
 - 即使刚好对齐，也要补一块，以防止解密时无法判断填充长度
-
 ### PKCS#7 规则
 - 假设要补 k 个字节，就用 **k** 作为填充字节的值
 - 每个填充字节都相同
@@ -81,190 +43,325 @@
 明文:    [41 42 43 44 45 46 47 48 49 4A 4B 4C 4D 03 03 03]
 总长度:  16 字节
 ```
+### 代码实现
+```cpp
+#include <stdio.h>
+#include <stdint.h>
+#include <stdlib.h>
+#include <cstddef>
+#include <cstring>
 
+/**
+ * 参数：
+ *   data         - 指向原始数据的指针（不修改该指针内容）
+ *   data_len     - 原始数据长度（字节）
+ *   block_size   - 块大小（字节），例如 AES 为 16
+ *   padded_data  - 输出参数：返回分配的填充后数据指针 （调用者负责 free）
+ *   padded_len   - 输出参数：返回填充后数据的长度（字节）
+ */
+void pkcs7_pad(uint8_t *data, size_t data_len, size_t block_size, uint8_t **padded_data, size_t *padded_len) {
+    size_t pad_len = block_size - (data_len % block_size); // 计算需要填充的字节
+
+    *padded_len = data_len + pad_len; // 计算填充后的总长度,是16的倍数
+    *padded_data = (uint8_t *)malloc(*padded_len); // 分配新的内存
+
+    if (*padded_data == NULL) {
+        fprintf(stderr, "Memory allocation failed\n");
+        exit(1);
+    }
+    memcpy(*padded_data, data, data_len);
+    for (size_t i = 0; i < pad_len; i++) {
+        (*padded_data)[data_len + i] = (uint8_t)pad_len;
+    }
+}
+
+int main(void) {
+    uint8_t data[] = { 0x01, 0x02, 0x03, 0x04, 0x05 }; // 原始数据
+    size_t block_size = 16; // 块大小
+    uint8_t *padded_data = NULL;
+    size_t padded_len = 0;
+
+    pkcs7_pad(data, sizeof(data), block_size, &padded_data, &padded_len);
+
+    printf("Original data length: %zu\n", sizeof(data));
+    printf("Padded data length: %zu\n\n", padded_len);
+
+    printf("No padded data: ");
+    for (size_t i = 0; i < sizeof(data); i++) {
+        printf("%02X ", data[i]);
+    }
+    puts("\n");
+
+    printf("Padded data: ");
+    for (size_t i = 0; i < padded_len; i++) {
+        printf("%02X ", padded_data[i]);
+    }
+
+	free(padded_data);
+	return 0;
+}
+
+/*
+Original data length: 5
+Padded data length: 16
+
+No padded data: 01 02 03 04 05
+
+Padded data: 01 02 03 04 05 0B 0B 0B 0B 0B 0B 0B 0B 0B 0B 0B
+*/
+```
 # 主要的算法介绍
 ## Tea/XTea/XXTea/IDEA/RC4/RC5/RC6/AES/DES/IDEA/MD5/SHA256/SHA1等加密算法
 
 #  TEA系列算法
 ## 参数解析
+一种简单的小型加密方式,标准轮数为32轮
+
 - 分组大小: 64位 (8字节)
 - 密钥大小: 128位 (16字节)
 
 [https://www.cnblogs.com/zpchcbd/p/15974293.html](https://www.cnblogs.com/zpchcbd/p/15974293.html)
 可以参照这篇博客，写的比较详细
+## 流程分析
+![image.png|300](https://cloud-map-bed-1351541725.cos.ap-nanjing.myqcloud.com/pic/20251102173601.png)
 
+(红圆形十字为异或, 绿色方形十字为加)
+
+根据算法流程图可以看出
+- 将输入分成两块,称为v[0],v[1]
+- 对v[1]进行三次处理(位移运算与和运算)后三者异或得到中间值
+- v[0]加上中间值得到新v[0]
+- 对v[1]进行相同的处理得到新v[1]
+- 重复32轮
+
+注意: 图中的Delta表示每一轮的sum值加上Delta
 ## 标准TEA
-
 ```cpp
 #include <stdio.h>
 #include <stdint.h>
+#include <cstring>
 //加密函数
 
-void encrypt (uint32_t* v, uint32_t* k) {
+void encrypt (uint32_t* value, uint32_t* key) {
 
-    uint32_t v0=v[0], v1=v[1], sum=0, i;           /* set up */
-    uint32_t delta=0x9e3779b9;                
-    uint32_t k0=k[0], k1=k[1], k2=k[2], k3=k[3];   /* cache key */
+    uint32_t v0=value[0], v1=value[1], sum=0, i;           /* set up */
+    uint32_t delta=0x9e3779b9;                
+    uint32_t k0=key[0], k1=key[1], k2=key[2], k3=key[3];   /* cache key */
 
-    for (i=0; i < 32; i++) {                       /* basic cycle start */
-        sum += delta;
-        v0 += ((v1<<4) + k0) ^ (v1 + sum) ^ ((v1>>5) + k1);
-        v1 += ((v0<<4) + k2) ^ (v0 + sum) ^ ((v0>>5) + k3);
-    }                                              /* end cycle */
-    v[0]=v0; v[1]=v1;
+    for (i=0; i < 32; i++) {                       /* basic cycle start */
+        sum += delta;
+        v0 += ((v1<<4) + k0) ^ (v1 + sum) ^ ((v1>>5) + k1);
+        v1 += ((v0<<4) + k2) ^ (v0 + sum) ^ ((v0>>5) + k3);
+    }                                              /* end cycle */
+    value[0]=v0; value[1]=v1;
 }
 
 //解密函数
 
-void decrypt (uint32_t* v, uint32_t* k) {
+void decrypt (uint32_t* value, uint32_t* key) {
 
-    uint32_t v0=v[0], v1=v[1], sum=0xC6EF3720, i; 
-    uint32_t delta=0x9e3779b9;                     
-    uint32_t k0=k[0], k1=k[1], k2=k[2], k3=k[3]; 
+    uint32_t v0=value[0], v1=value[1], sum=0xC6EF3720, i; 
+    uint32_t delta=0x9e3779b9;                     
+    uint32_t k0=key[0], k1=key[1], k2=key[2], k3=key[3]; 
 
-    for (i=0; i<32; i++) {                     
-        v1 -= ((v0<<4) + k2) ^ (v0 + sum) ^ ((v0>>5) + k3);
-        v0 -= ((v1<<4) + k0) ^ (v1 + sum) ^ ((v1>>5) + k1);
-        sum -= delta;
-    }                                      
-    v[0]=v0; v[1]=v1;
+    for (i=0; i<32; i++) {                     
+        v1 -= ((v0<<4) + k2) ^ (v0 + sum) ^ ((v0>>5) + k3);
+        v0 -= ((v1<<4) + k0) ^ (v1 + sum) ^ ((v1>>5) + k1);
+        sum -= delta;
+    }                                      
+    value[0]=v0; value[1]=v1;
 }
 
 int main()
 {
+    uint32_t key[4]={2,2,3,4};
+    const char* plaintext="HelloWorld_Welcome_to_encode_!!!"; //明文
 
-    uint32_t v[2]={1,2},k[4]={2,2,3,4};
-    // v为要加密的数据是两个32位无符号整数(四个字节)
-    // k为加密解密密钥，为4个32位无符号整数，即密钥长度为128位
-    printf("加密前原始数据：%u %u\n",v[0],v[1]);
-    encrypt(v, k);
-    printf("加密后的数据：%u %u\n",v[0],v[1]);
-    decrypt(v, k)
-    printf("解密后的数据：%u %u\n",v[0],v[1]);
-    return 0;
+    int plaintext_len = strlen(plaintext);
+    uint32_t tmp[8];
+
+    memcpy(tmp, plaintext, 32);
+    printf("Plaintext: %s\n", plaintext);
+
+    for (int i = 0; i < 8; i += 2) {
+        encrypt(&tmp[i], key);
+    }
+
+    printf("After encryption:\n");
+    for (int i = 0; i < 8; i++) {
+        printf("%08x ", tmp[i]);
+    }
+
+    printf("\nAfter decryption:\n");
+    for (int i = 0; i < 8; i += 2) {
+        decrypt(&tmp[i], key);
+    }
+    printf("%s\n", (char*)tmp);
+    // v为要加密的数据是两个32位无符号整数(四个字节)
+    // k为加密解密密钥，为4个32位无符号整数，即密钥长度为128位
+    return 0;
 
 }
+/* shell output ->
+
+Plaintext: HelloWorld_Welcome_to_encode_!!!
+After encryption:
+ea99cb31 4a00a721 f12d7a1a 166346d9 71d37571 78b3a20a 8143ce11 c85e323c
+After decryption:
+HelloWorld_Welcome_to_encode_!!!
+
+*/
 ```
-
 ## XTEA算法
+TEA算法的升级版,加入了更多的处理机制和操作.
+### 算法解析
+<img src="https://cloud-map-bed-1351541725.cos.ap-nanjing.myqcloud.com/pic/20251102174853.png" width="30%">
+
+- 同理按照左右分块
+- 对右块进行一系列处理得到中间值并与左块相加
+- 对左块进行相同处理
+- 循环
 
 ```cpp
-#include <stdio.h>
 #include <stdint.h>
-//加密函数
+#include <stdio.h>
 
-void encrypt (uint32_t* v, uint32_t* k) {
-    uint32_t v0=v[0], v1=v[1], sum=0, i;   
-    uint32_t delta=0x9e3779b9;           
-    uint32_t k0=k[0], k1=k[1], k2=k[2], k3=k[3]; 
-    for (i=0; i < 32; i++) {               
-        sum += delta;
-        v0 += ((v1<<4) + k0) ^ (v1 + sum) ^ ((v1>>5) + k1);
-        v1 += ((v0<<4) + k2) ^ (v0 + sum) ^ ((v0>>5) + k3);
-    }                              
-    v[0]=v0; v[1]=v1;
+/* take 64 bits of data in v[0] and v[1] and 128 bits of key[0] - key[3] */
+
+void encipher(unsigned int num_rounds, uint32_t v[2], uint32_t const key[4]) {
+    unsigned int i;
+    uint32_t v0 = v[0], v1 = v[1], sum = 0, delta = 0x9E3779B9;
+    for (i = 0; i < num_rounds; i++) {
+        v0 += (((v1 << 4) ^ (v1 >> 5)) + v1) ^ (sum + key[sum & 3]);
+        sum += delta;
+        v1 += (((v0 << 4) ^ (v0 >> 5)) + v0) ^ (sum + key[(sum >> 11) & 3]);
+    }
+    v[0] = v0;
+    v[1] = v1;
 }
 
-//解密函数
-
-void decrypt (uint32_t* v, uint32_t* k) {
-
-    uint32_t v0=v[0], v1=v[1], sum=0xC6EF3720, i;  
-    uint32_t delta=0x9e3779b9;                     
-    uint32_t k0=k[0], k1=k[1], k2=k[2], k3=k[3];   
-
-    for (i=0; i<32; i++) {                       
-        v1 -= ((v0<<4) + k2) ^ (v0 + sum) ^ ((v0>>5) + k3);
-        v0 -= ((v1<<4) + k0) ^ (v1 + sum) ^ ((v1>>5) + k1)
-        sum -= delta;
-    }                                
-    v[0]=v0; v[1]=v1;
+void decipher(unsigned int num_rounds, uint32_t v[2], uint32_t const key[4]) {
+    unsigned int i;
+    uint32_t v0 = v[0], v1 = v[1], delta = 0x9E3779B9, sum = delta * num_rounds;  // 现在是中文
+    for (i = 0; i < num_rounds; i++) {
+        v1 -= (((v0 << 4) ^ (v0 >> 5)) + v0) ^ (sum + key[(sum >> 11) & 3]);
+        sum -= delta;
+        v0 -= (((v1 << 4) ^ (v1 >> 5)) + v1) ^ (sum + key[sum & 3]);
+    }
+    v[0] = v0;
+    v[1] = v1;
 }
 
-int main()
-{
-    uint32_t v[2]={1,2},k[4]={2,2,3,4};
-    // v为要加密的数据是两个32位无符号整数(四个字节)
-    // k为加密解密密钥，为4个32位无符号整数，即密钥长度为128位
-    printf("加密前原始数据：%u %u\n",v[0],v[1]);
-    encrypt(v, k);
-    printf("加密后的数据：%u %u\n",v[0],v[1]);
-    decrypt(v, k);
-    printf("解密后的数据：%u %u\n",v[0],v[1]);
-    return 0;
+int main() {
+    uint32_t v[2] = {1, 2};
+    uint32_t const k[4] = {2, 2, 3, 4};
+    unsigned int r = 32;  // num_rounds建议取值为32
+    // v为要加密的数据是两个32位无符号整数中文
+    // k为加密解密密钥，为4个32位无符号整数，即密钥长度为128位
+    printf("加密前原始数据：%u %u\n", v[0], v[1]);
+    encipher(r, v, k);
+    printf("加密后的数据：%u %u\n", v[0], v[1]);
+    decipher(r, v, k);
+    printf("解密后的数据：%u %u\n", v[0], v[1]);
+    // 现在使用中文注释
+    return 0;
 }
 ```
 
 ## XXTEA算法
+### 算法解析
+![image.png|700](https://cloud-map-bed-1351541725.cos.ap-nanjing.myqcloud.com/pic/20251102181648.png)
 
 ```cpp
 #include <stdio.h>
 #include <stdint.h>
 #define DELTA 0x9e3779b9
-#define MX (((z>>5^y<<2) + (y>>3^z<<4)) ^ ((sum^y) + (key[(p&3)^e] ^ z)))
-void btea(uint32_t *v, int n, uint32_t const key[4])
-{
-    uint32_t y, z, sum;
-    unsigned p, rounds, e;
+#define MX (((z>>5^y<<2) + (y>>3^z<<4)) ^ ((sum^y) + (key[(idx&3)^e] ^ z)))
 
-    if (n > 1)            /* Coding Part */
-    {
-        rounds = 6 + 52/n;
-        sum = 0;
-        z = v[n-1];
-        do
-        {
-            sum += DELTA;
-            e = (sum >> 2) & 3;
-            for (p=0; p<n-1; p++)
-            {
-                y = v[p+1];
-                z = v[p] += MX;
-            }
-            y = v[0];
-            z = v[n-1] += MX;
-        }
-        while (--rounds);
-    }
-    else if (n < -1)      /* Decoding Part */
-    {
-        n = -n;
-        rounds = 6 + 52/n;
-        sum = rounds*DELTA;
-        y = v[0];
-        do
-        {
-            e = (sum >> 2) & 3;
-            for (p=n-1; p>0; p--)
-            {
-                z = v[p-1];
-                y = v[p] -= MX;
-            }
-            z = v[n-1];
-            y = v[0] -= MX;
-            sum -= DELTA;
-        }
-        while (--rounds);
-    }
+/* Block TEA 加密/解密函数
+ * 参数：
+ *   plain_text: 待处理的数据数组
+ *   length: 数组长度（32位字的个数）
+ *   key: 128位密钥（4个32位字）
+ */
+void btea(uint32_t *plain_text, int length, uint32_t const key[4])
+{
+    uint32_t y, z, sum;        /* y,z: 相邻数据块; sum: 轮常量累加值 */
+    unsigned idx, rounds, e;      /* p: 位置计数器; rounds: 加密轮数; e: 轮密钥选择因子 */
+
+    /* 加密过程（至少需要2个32位字） */
+    if (length > 1)
+    {
+        /* 计算加密轮数：基础6轮 + 根据数据长度动态调整的轮数 */
+        rounds = 6 + 52/length;
+        sum = 0;               /* 初始化轮常量累加值 */
+        z = plain_text[length-1];  /* 获取最后一个数据块 */
+        do
+        {
+            sum += DELTA; // sum累加
+            e = (sum >> 2) & 3; // 计算e
+            for (idx=0; idx<length-1; idx++)
+            {
+                y = plain_text[idx+1]; // 获取下一个数据块
+                z = plain_text[idx] += MX; // 更新当前数据块
+            }
+            y = plain_text[0];
+            z = plain_text[length-1] += MX;
+        }
+        while (--rounds);
+    }
+    else if (length < -1)      /* Decoding Part */
+    {
+        length = -length;
+        rounds = 6 + 52/length;
+        sum = rounds*DELTA;
+        y = plain_text[0];
+        do
+        {
+            e = (sum >> 2) & 3;
+            for (idx=length-1; idx>0; idx--)
+            {
+                z = plain_text[idx-1];
+                y = plain_text[idx] -= MX;
+            }
+            z = plain_text[length-1];
+            y = plain_text[0] -= MX;
+            sum -= DELTA;
+        }
+        while (--rounds);
+    }
 }
 
+/* 测试主函数
+ * 演示 Block TEA (XXTEA) 算法的加密和解密过程
+ */
 int main()
 {
-    uint32_t v[2]= {1,2};
-    uint32_t const k[4]= {2,2,3,4};
-    int n= 2;
-    // n的绝对值表示v的长度，取正表示加密，取负表示解密
-    // v为要加密的数据是两个32位无符号整数
-    // k为加密解密密钥，为4个32位无符号整数，即密钥长度为128位
-    printf("加密前原始数据：%u %u\n",v[0],v[1]);
-    btea(v, n, k);
-    printf("加密后的数据：%u %u\n",v[0],v[1]);
-    btea(v, -n, k);
-    printf("解密后的数据：%u %u\n",v[0],v[1]);
-    return 0;
+    /* 测试数据初始化
+     * v: 待加密数据，2个32位整数
+     * k: 128位密钥，4个32位整数
+     * n: 数据长度参数
+     *    - |n| 表示数据长度（32位字的个数）
+     *    - n > 0 表示加密
+     *    - n < 0 表示解密
+     */
+    uint32_t v[2] = {1, 2};           /* 测试数据 */
+    uint32_t const k[4] = {2,2,3,4};  /* 测试密钥 */
+    int n = 2;                         /* 正值表示加密 */
+
+    printf("加密前原始数据：%u %u\n", v[0], v[1]);
+    
+    /* 加密过程：使用正数长度参数 */
+    btea(v, n, k);
+    printf("加密后的数据：%u %u\n", v[0], v[1]);
+    
+    /* 解密过程：使用负数长度参数 */
+    btea(v, -n, k);
+    printf("解密后的数据：%u %u\n", v[0], v[1]);
+    
+    return 0;
 }
 ```
-
 # RC4算法
 **RC4算法是一种对称加密算法**
 
@@ -377,7 +474,6 @@ int main() {
 ```
 # RC5算法
 **一种分组对称加密算法**
-
 ## 参数解析
 1. RC5有三个主要参数: 
 ```cpp
@@ -396,7 +492,6 @@ RC5-W/R/B
     - **128 位密钥（16 字节）**
     - 192 位（24 字节）
     - 256 位（32 字节）
-
 ## 算法实现
 ```cpp
 #include <stdio.h>
@@ -661,11 +756,11 @@ int main() {
 [高级加密标准 - 维基百科，自由的百科全书](https://zh.wikipedia.org/wiki/%E9%AB%98%E7%BA%A7%E5%8A%A0%E5%AF%86%E6%A0%87%E5%87%86)
 [【AES加密算法】| AES加密过程详解| 对称加密| Rijndael-128| 密码学| 信息安全_哔哩哔哩_bilibili](https://www.bilibili.com/video/BV1i341187fK/?spm_id_from=333.337.search-card.all.click&vd_source=3fbe06963450d79eb92b1fe509cd4c79)
 ## 主加密流程分析
-![image.png](https://cloud-map-bed-1351541725.cos.ap-nanjing.myqcloud.com/pic/20251101173710.png)
+![image.png|600](https://cloud-map-bed-1351541725.cos.ap-nanjing.myqcloud.com/pic/20251101173710.png)
 
 (注意图片中的aes-128的示范)
 总体流程可以总结为:
-明文->初始变换->指定轮数循环运算->1轮最终轮->密文
+明文->初始变换(AddRoundKey)->指定轮数循环运算->最终轮变换(没有列混合)->密文
 
 循环运算又可以分为
 1. 字节代换
@@ -673,18 +768,18 @@ int main() {
 3. 列混合
 4. 轮密钥加
 ### 初始变换
-![image.png](https://cloud-map-bed-1351541725.cos.ap-nanjing.myqcloud.com/pic/20251101172548.png)
+![image.png|600](https://cloud-map-bed-1351541725.cos.ap-nanjing.myqcloud.com/pic/20251101172548.png)
 
-![image.png](https://cloud-map-bed-1351541725.cos.ap-nanjing.myqcloud.com/pic/20251101172823.png)
+![image.png|600](https://cloud-map-bed-1351541725.cos.ap-nanjing.myqcloud.com/pic/20251101172823.png)
 
 - 首先会读入十六个字节的数据组成4x4的矩阵
 - 再和子密钥矩阵进行异或计算可以得到初始变换后的16个字节
 ### 字节代换
-![image.png](https://cloud-map-bed-1351541725.cos.ap-nanjing.myqcloud.com/pic/20251101173030.png)
+![image.png|600](https://cloud-map-bed-1351541725.cos.ap-nanjing.myqcloud.com/pic/20251101173030.png)
 
 在这个步骤中,会将上一步的16个字节通过查`sbox表得到混淆后的16个字节`
 ### 行移位
-![image.png](https://cloud-map-bed-1351541725.cos.ap-nanjing.myqcloud.com/pic/20251101173330.png)
+![image.png|600](https://cloud-map-bed-1351541725.cos.ap-nanjing.myqcloud.com/pic/20251101173330.png)
 
 对得到的4x4的矩阵,每一行进行循环位移
 0行: 不移动
@@ -692,29 +787,48 @@ int main() {
 2行: 向左循环位移2位
 3行: 向左循环位移3位
 ### 列混合
+注意: 是在GF($2^8$)有限域中的矩阵乘法.
 对上一步的结果左乘一个`固定的矩阵`
+
+通常固定的矩阵是:
+
+$$
+\begin{bmatrix}
+02& 03 & 01 & 01 \\
+01 & 02&03&01\\
+01&01&02&03\\
+03&01&01&02
+\end{bmatrix} 
+\oplus
+\begin{bmatrix}
+a0\\
+a1\\
+a2\\
+a3
+\end{bmatrix} 
+$$
 ### 轮密钥加
-对上一步得到的结果和一个`子密钥矩阵`异或
+对上一步得到的结果与一个`子密钥矩阵`异或
 ## 密钥拓展的流程
 在aes-128中,密钥拓展会得到10个子密钥矩阵用于主要加密流程中的加密
 
 - 如果i不是4的倍数
 
-![image.png](https://cloud-map-bed-1351541725.cos.ap-nanjing.myqcloud.com/pic/20251101174326.png)
+![image.png|600](https://cloud-map-bed-1351541725.cos.ap-nanjing.myqcloud.com/pic/20251101174326.png)
 
 - 如果i是4的倍数,$W[i] = W[i-4] \oplus T(W[i-1])$
 ### T函数流程
 1. 字循环
 
-![image.png](https://cloud-map-bed-1351541725.cos.ap-nanjing.myqcloud.com/pic/20251101174856.png)
+![image.png|600](https://cloud-map-bed-1351541725.cos.ap-nanjing.myqcloud.com/pic/20251101174856.png)
 
 2. 字节代换
 
-![image.png](https://cloud-map-bed-1351541725.cos.ap-nanjing.myqcloud.com/pic/20251101174948.png)
+![image.png|600](https://cloud-map-bed-1351541725.cos.ap-nanjing.myqcloud.com/pic/20251101174948.png)
 
 3. 轮常量异或,将上一轮得到的结果和Rcon[j]异或,j是轮数
 
-![image.png](https://cloud-map-bed-1351541725.cos.ap-nanjing.myqcloud.com/pic/20251101175704.png)
+![image.png|600](https://cloud-map-bed-1351541725.cos.ap-nanjing.myqcloud.com/pic/20251101175704.png)
 
 ## 比赛中的魔改
 	1. 修改SBOX
@@ -743,7 +857,6 @@ int main() {
 #include <stdio.h>
 
 /*==================== 常量表：S-box & Rcon ====================*/
-
 /*
  * AES S-Box（FIPS-197，表4）
  * 作用：非线性替换表，提供算法的混淆特性
@@ -1456,7 +1569,6 @@ int main(void) {
 - **输出**：128位明文（16字节）
 - **轮数**：32轮
 - **结构**：非线性S盒 + 线性变换（扩散）+ 轮密钥
-
 ## 代码实现
 ```cpp
 #include <stdint.h>
