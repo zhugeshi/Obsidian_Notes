@@ -397,6 +397,27 @@ def RC4(key, text):
     for char in text:
         res.append(char ^ next(keystream))
     return bytes(res)
+
+def main():
+    # 测试
+    key = b"HelloRc4!"
+    plaintext = b"This is a secret message."
+    print("Plaintext:", plaintext)
+
+    # 加密
+    cipher = RC4(key, plaintext)
+    print("Ciphertext (hex):", cipher.hex(), end="\n")
+
+    # 解密
+    print("Decrypting...")
+    decrypted = RC4(key, cipher)
+    try: 
+        print("Decrypted text:", decrypted.decode("utf-8"))
+    except UnicodeDecodeError:
+        print("Decrypted text (bytes):", decrypted)
+
+if __name__ == "__main__":
+    main()
 ```
 
 ```cpp
@@ -476,9 +497,11 @@ int main() {
 **一种分组对称加密算法**
 ## 参数解析
 1. RC5有三个主要参数: 
+
 ```cpp
 RC5-W/R/B
 ```
+
 - **w**：字长（word size），常用 32（位）、也可以是 16、64
 - **r**：加密轮数（rounds），常用 12 或 20
 - **b**：密钥长度（bytes），取值 0~255 字节，常用 16 字节（128 位）
