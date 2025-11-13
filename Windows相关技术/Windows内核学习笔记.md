@@ -3,7 +3,7 @@
 ![](https://images.cnblogs.com/cnblogs_com/blogs/702188/galleries/2033358/o_2109200928364-8.png)
 
 # 段描述符和段选择子
-当我们执行类似`MOV DS,AX`指令时，`CPU`会查表，根据`AX`的值来决定查找`GDT`还是`LDT`，并找到对应的段描述符。段描述符将会在后面部分进行介绍。 `段描述符结构示意图(GDT表中的每一个QWORD大小的单元)` ![](https://images.cnblogs.com/cnblogs_com/blogs/702188/galleries/2033358/o_2109191244474-1.png)
+当我们执行类似`MOV DS,AX`指令时，`CPU`会查表，根据`AX`的值来决定查找`GDT`还是`LDT`，并找到对应的段描述符。段描述符将会在后面部分进行介绍。 `段描述符结构示意图(GDT表中的每一个QWORD大小的单元)` ![|700](https://images.cnblogs.com/cnblogs_com/blogs/702188/galleries/2033358/o_2109191244474-1.png)
 ## 段描述符各个位的介绍
 段描述符有很多成员，它的成员将会在下面详细介绍，学习的时候一定要按照我介绍的顺序进行学习：
 ### P位
@@ -22,7 +22,8 @@
   `TYPE域`是比较复杂的成员，它表示的含义受`S位`的影响。
 #### 当S位为1时
   此时段描述符表示的是代码段或者数据段，如下图所示：
-![](https://images.cnblogs.com/cnblogs_com/blogs/702188/galleries/2033358/o_2109200324584--4.png)
+  
+![|700](https://images.cnblogs.com/cnblogs_com/blogs/702188/galleries/2033358/o_2109200324584--4.png)
   
   对于表格中Type域的属性和含义，如下表格所示：
 
@@ -37,8 +38,7 @@
 #### 当S位为0时
   此时段描述符表示的是系统段，系统段有很多种，将会在后面的教程进行详细讲解。Type域每一个数值的含义如下图所示：
 
-![](https://images.cnblogs.com/cnblogs_com/blogs/702188/galleries/2033358/o_2109200325124-6.png)
-
+![|700](https://images.cnblogs.com/cnblogs_com/blogs/702188/galleries/2033358/o_2109200325124-6.png)
 ### C位
   `C = 1`：一致代码段；`C = 0`：非一致代码段。什么是一致代码段，什么是非一致代码段，将在后面的教程进行介绍。
 ### E位
