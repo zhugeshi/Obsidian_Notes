@@ -20,7 +20,20 @@ git config --global alias.lg "log --oneline --graph --all --decorate"
 现在输入以下命令即可:
 git lg
 ```
+# Git config代理配置
+```shell
+git config --global --get http.proxy
+git config --global --get https.proxy
+```
 
+这里的命令用来显示git中全局的http和https的代理IP和端口
+
+```shell
+git config --global --unset http.proxy
+git config --global --unset https.proxy
+```
+
+这里的命令用来取消设置
 # 踩的一些坑
 ```shell
 PS D:\Obsidian\mynote> 

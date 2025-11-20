@@ -1,10 +1,13 @@
 # 前言
 最近刚好在学习安卓逆向,又碰巧在学习frida的使用方法,做到一道攻防世界上面的题目,想着是否能够借助这次机会来学习一下Frida的使用方法
-
-# Step1
+# Frida Hook使用方法
+一些参考链接: todo
+# 例题讲解
+## Phonix
+### Step1
 首先是运行一下看看它的实现方式,发现是input加验证的方式
 
-![](https://pic1.imgdb.cn/item/6838703c58cb8da5c81ae771.png)
+![|600](https://pic1.imgdb.cn/item/6838703c58cb8da5c81ae771.png)
 
 我们接着反汇编它的代码
 
@@ -117,8 +120,7 @@ if (getSecret(getFlag()).equals(getSecret(encrypt(sInput)))) {
 ```
 
 可以发现,程序将我们的由于两边都有getSecret函数,所以我们只需要进行getflag()和encrypt(sInput)的比较就可以了.
-
-# Step2
+### Step2
 通过分析so文件,我们可以得知encrypt()函数就是简单的把sInput的每一个ascll码加上了1,所以现在我们只需要得到getflag()的返回值就好了.
 
 我们接下来可以尝试使用frida来hook这个函数.
