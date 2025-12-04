@@ -1,5 +1,5 @@
 # 环境搭建
-为了方便ida python脚本等的学习,先在vscode中搭建一下ida python环境方便我们编写程序.
+为了方便ida ipython脚本等的学习,先在vscode中搭建一下ida python环境方便我们编写程序.
 
 - 首先在在vscode中安装插件IDACode
 
