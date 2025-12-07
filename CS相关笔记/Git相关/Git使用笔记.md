@@ -1,4 +1,35 @@
 本篇文档,(不)完全使用ai编写(笑),用于记录我使用git的一些过程
+# 常用Git命令
+## 基础命令
+- commit
+- branch
+	在HEAD处创建一个新的分支
+	
+- merge
+
+```
+git merge <branch>                // 将branch合并到当前HEAD指向的分支后,合并后要处理冲突的部分
+```
+
+- rebase
+
+```
+git rebase <branch>               // 将当前分支移植到brach的节点后
+```
+
+![image.png|300](https://cloud-map-bed-1351541725.cos.ap-nanjing.myqcloud.com/pic/20251207210200.png)
+
+- revert && reset
+
+```shell
+git reset <branch>/<hash>          // 彻底回撤到上一个分支,当前分支的内容直接删除,本地也没有记录了
+git revert <branch>/<hash>         // 撤销当前内容,但是重新提交一次commit,可以推送到远程 
+```
+## 整理分支
+- cherry-pick
+	可以让你挑选特定的节点合并到你的分支中
+
+![image.png|700](https://cloud-map-bed-1351541725.cos.ap-nanjing.myqcloud.com/pic/20251207211734.png)
 # 常规远程同步流程
 - git init (用于初始化本地仓库)
 - git add . (将当前仓库下所有的文件添加到git缓冲区)
@@ -20,7 +51,8 @@ git config --global alias.lg "log --oneline --graph --all --decorate"
 现在输入以下命令即可:
 git lg
 ```
-# Git config代理配置
+# Git config配置
+## Git Config 代理配置
 ```shell
 git config --global --get http.proxy
 git config --global --get https.proxy
@@ -34,6 +66,27 @@ git config --global --unset https.proxy
 ```
 
 这里的命令用来取消设置
+## Git 仓库配置
+以下的命令用于显示当前仓库用户名和email地址
+
+```shell
+git config user.name
+git config user.email
+```
+
+设置当前仓库的user.name/user.email
+
+```shell
+git config user.email yourEmailName
+git config user.name yourName
+```
+
+设置当前仓库的user.name/user.email
+
+```shell
+git config --global user.name yourName
+git config --global user.email yourEmailName
+```
 # 踩的一些坑
 ```shell
 PS D:\Obsidian\mynote> 
