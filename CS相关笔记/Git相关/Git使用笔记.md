@@ -9,6 +9,7 @@
 
 ```
 git merge <branch>                // 将branch合并到当前HEAD指向的分支后,合并后要处理冲突的部分
+git status                        // 查看冲突文件
 ```
 
 - rebase
@@ -30,6 +31,15 @@ git revert <branch>/<hash>         // 撤销当前内容,但是重新提交一�
 	可以让你挑选特定的节点合并到你的分支中
 
 ![image.png|700](https://cloud-map-bed-1351541725.cos.ap-nanjing.myqcloud.com/pic/20251207211734.png)
+## 远程处理
+- push
+	- `origin`：远程仓库名
+	- `main`：你当前本地分支
+	- `test`：你希望推送到的远程分支名称  
+	    → 如果远程不存在，会自动创建
+	```shell
+git push origin main:test	
+	```
 # 常规远程同步流程
 - git init (用于初始化本地仓库)
 - git add . (将当前仓库下所有的文件添加到git缓冲区)
