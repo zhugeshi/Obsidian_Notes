@@ -50,3 +50,11 @@ exmap vsp obcommand workspace:split-vertical
 exmap hsp obcommand workspace:split-horizontal
 " 关闭工作区
 exmap q obcommand workspace:close
+
+" 实现光标折叠
+exmap foldAll obcommand editor:fold-all
+nmap zM :foldAll
+exmap unfoldAll obcommand editor:unfold-all
+nmap zR :unfoldAll
+exmap toggleFold obcommand editor:toggle- fold
+nmap za :toggleFold

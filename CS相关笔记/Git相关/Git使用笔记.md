@@ -31,15 +31,25 @@ git revert <branch>/<hash>         // 撤销当前内容,但是重新提交一�
 	可以让你挑选特定的节点合并到你的分支中
 
 ![image.png|700](https://cloud-map-bed-1351541725.cos.ap-nanjing.myqcloud.com/pic/20251207211734.png)
+
+如果你想要删除远程分支
+
+```shell
+# 推荐：删除远程分支
+git push origin --delete test
+
+# 然后整理本地的远程分支
+git fetch --prune
+# 或
+git remote prune origin
+
+```
 ## 远程处理
-- push
-	- `origin`：远程仓库名
-	- `main`：你当前本地分支
-	- `test`：你希望推送到的远程分支名称  
-	    → 如果远程不存在，会自动创建
-	```shell
-git push origin main:test	
-	```
+如果你想要推送当前分支到远程仓库中, 如果远程没有 \<branch\> 分支，你需要创建并推送：
+ 
+```shell
+git push -u origin <branch>
+```
 # 常规远程同步流程
 - git init (用于初始化本地仓库)
 - git add . (将当前仓库下所有的文件添加到git缓冲区)
