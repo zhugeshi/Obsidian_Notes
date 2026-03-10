@@ -3,6 +3,11 @@ nmap K 6k
 nmap H ^
 nmap L $
 
+nnoremap j gj
+nnoremap k gk
+vnoremap j gj
+vnoremap k gk
+
 " 复制整行
 nmap Y yy
 

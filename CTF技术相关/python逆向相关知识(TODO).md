@@ -1,12 +1,15 @@
 # 相关博客
 [python逆向总结-先知社区](https://xz.aliyun.com/news/12245)
+
 # python运行原理
 Python是解释型语言，没有严格意义上的编译和汇编过程。但是一般可以认为编写好的python源文件，由python解释器翻译成以.pyc为结尾的字节码文件。pyc文件是二进制文件，可以由python虚拟机直接运行。
+
 # python代码运行机制
 1. Python.exe调用XX.py(源码)，解释并运行。
 2. Python.exe调用XX.pyc(字节码)，解释并运行。
 3. Python.exe调用XX.pyd(机器码)，调用运行。
 4. 如果有依赖的库，根据上面三种情况调用运行。
+
 # .pyc
 .pyc：python编译后的二进制文件，是.py文件经过编译产生的字节码，pyc文件是可以由python虚拟机直接执行的程序（PyCodeObject对象在硬盘上的保存形式）。
 pyc文件**仅**在由另一个.py文件或模块导入时从.py文件创建（**import**）。触发 pyc 文件生成不仅可以通过 import，还可以通过 py_compile 模块手动生成。
@@ -18,10 +21,12 @@ pyc文件一般由3个部分组成:
 1. Magic num：标识此pyc的版本信息, 不同的版本的 Magic 都在 `Python/import.c` 内定义
 2. 文件创建时间：UNIX时间戳（从1970.1.1开始计数秒数）
 3. 序列化了的 PyCodeObject：此结构在 `Include/code.h` 内定义，序列化方法在 `Python/marshal.c` 内定义
+
 # .pyd
 .pyd文件类型是特定于Windows操作系统类平台的，是一个动态链接库，它包含一个或一组Python模块，由其他Python代码调用。要创建.pyd文件，需要创建一个名为example.pyd的模块。在这个模块中，需要创建一个名为PyInit_example()的函数。当程序调用这个库时，它们需要调用import foo, PyInit_example()函数将运行。
 
 该文件可以直接用ida进行静态逆向分析.
+
 # .pyc反编译
 ## uncompyle6
 适用于python 1.0 - 3.8 版本.建议创建conda虚拟环境之后使用
@@ -33,11 +38,18 @@ uncompyle6 -o test.py test.pyc
 ## pycdc
 适用于python 3.9以及更高版本
 同时存在的pycdas.exe是用于显示python字节码的工具.当pycdc本体无法使用的时候可以使用这个.
+
+## pylingual
+目前最新的反编译的一个在线网站
+
 # python反编译
+
 ## PyInstaller
 用于将.py编译成.exe
+
 ## pyinstxtractor
 用于解包打包的.exe文件,可能需要对应的python版本才行
+
 # 常用op_code指令
 ## 常用基本指令
 

@@ -50,6 +50,12 @@ git remote prune origin
 ```shell
 git push -u origin <branch>
 ```
+
+如果你想要删除远程的某个分支，则可以将一个空分支推送并添加上--delete参数
+
+```shell
+git push origin --delete <branch>
+```
 # 常规远程同步流程
 - git init (用于初始化本地仓库)
 - git add . (将当前仓库下所有的文件添加到git缓冲区)
@@ -65,13 +71,18 @@ git push -u origin <branch>
 - 可加过滤：`--author`、`--grep`、`--since`、`-- <file>`
 
 ```shell
-将命令映射一下,可以少敲一点代码:
+将命令映射一下,可以少敲一点:
 git config --global alias.lg "log --oneline --graph --all --decorate"
 
 现在输入以下命令即可:
 git lg
 ```
 # Git config配置
+可以通过下面的命令来查看git中相关的config配置
+
+```shell
+git config list
+```
 ## Git Config 代理配置
 ```shell
 git config --global --get http.proxy
